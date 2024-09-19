@@ -1,0 +1,9 @@
+bin/
+obj/
+plf
+*.json
+test
+shared-test
+test.c
+shared-test.c
+vgcore.*
