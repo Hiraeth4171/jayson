@@ -1,5 +1,6 @@
 # Jayson
-One of the libraries for Smiley
+One of the libraries for Smiley, basic json library, still very much a work in progress
+but the very basic functionality is in.
 
 ```sh
 make setup build
