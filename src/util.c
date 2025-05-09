@@ -26,7 +26,7 @@ lex(char* buff) {
         buff[i] = *ptr;
     }
     buff[i] = *ptr;
-    buff = realloc(buff, i+2); // MEMORY_CHECK MACRO
+    // buff = realloc(buff, i+2); // MEMORY_CHECK MACRO
     buff[i+1] = '\0';
     return buff;
 }
