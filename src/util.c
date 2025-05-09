@@ -25,8 +25,9 @@ lex(char* buff) {
         if (*ptr == '"') in_str_flag ^= 1;
         buff[i] = *ptr;
     }
+    buff[i] = *ptr;
     buff = realloc(buff, i+1); // MEMORY_CHECK MACRO
-    buff[i] = '\0';
+    buff[i+1] = '\0';
     return buff;
 }
 
