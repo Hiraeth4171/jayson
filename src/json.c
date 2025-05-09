@@ -48,7 +48,7 @@ add_token(JSONToken** tokens, JSONToken token, size_t *tokens_cap) {
 }
 
 JSONToken
-create_token(TokenType type, char* str, size_t *len) {
+create_token(JaysonTokenType type, char* str, size_t *len) {
     //printf("1: %d, 2: %s, 3: %lu", type, str, *len);
     if (str == NULL) exit(-1);
     return (JSONToken){ .type = type, .content = (String){ .size = *len, .data = str}};

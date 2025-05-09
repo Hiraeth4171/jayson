@@ -1,7 +1,8 @@
 objects = obj/json.o obj/util.o obj/logging.o
 
+#erm what the flip
 setup:
-	mkdir obj bin
+	mkdir -p obj bin bin/shared
 	@echo " - you can edit the flags in the makefile to remove the debug build stuff"
 
 build: FLAGS = -ggdb
@@ -38,3 +39,6 @@ install:
 
 valgrind-clean:
 	rm -f vgcore.*
+
+clean:
+	rm -rf obj bin
