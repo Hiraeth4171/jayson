@@ -532,7 +532,7 @@ JSON json_load(const char* src) {
     if (result == -1) { 
         log_err("json_load failed"); 
     }
-    char* buff = g_settings.flags & (1 << 5) ? (char*)src : read_file(src, length);
+    char* buff = g_settings.flags & O_DYNAMIC ? (char*)src : read_file(src, length);
     //printf("%s\n", buff);
     buff = lex(buff);
     //printf("%s\n", buff);
