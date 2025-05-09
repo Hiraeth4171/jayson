@@ -528,9 +528,11 @@ void free_tokens(JSONToken** tokens) {
 
 JSON json_load(const char* src) {
     long* length = malloc(sizeof(long));
-    int result = access(src, R_OK);
-    if (result == -1) { 
-        log_err("json_load failed"); 
+    if (g_settings.flags & O_READ_FROM_FILE) {
+        int result = access(src, R_OK);
+        if (result == -1) { 
+            log_err("json_load failed"); 
+        }
     }
     char* buff = g_settings.flags & O_DYNAMIC ? (char*)src : read_file(src, length);
     //printf("%s\n", buff);
