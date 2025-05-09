@@ -51,7 +51,7 @@ typedef enum {
     T_COLON,
     T_COMMA,
     T_EOF, // special terminator token
-} TokenType;
+} JaysonTokenType;
 
 typedef struct {
     size_t size;
@@ -101,7 +101,7 @@ struct Node {
 };
 
 typedef struct {
-    TokenType type;
+    JaysonTokenType type;
     String content;
 } JSONToken;
 
