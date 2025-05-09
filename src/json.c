@@ -27,8 +27,7 @@ json_init(int flags) {
 
 
 bool
-add_token(JSONToken** tokens, JSONToken token, size_t *tokens_cap) {
-    static size_t count = 0;
+add_token(JSONToken** tokens, JSONToken token, size_t *tokens_cap, size_t count) {
     if (count >= *tokens_cap) {
         *tokens_cap += CHUNK;
         JSONToken* tmp = (JSONToken*)realloc(*tokens, (*tokens_cap) * sizeof(JSONToken));
@@ -41,7 +40,7 @@ add_token(JSONToken** tokens, JSONToken token, size_t *tokens_cap) {
     }
     //if(token.type != T_EOF) printf("-[ type: %d, content: { .data = '%s', \t .size = %lu} ], count: %lu\n", token.type, token.content.data, token.content.size, count);
 
-    (*tokens)[count++] = token;
+    (*tokens)[count] = token;
     //printf("hi\n\n");
     //printf("----- [ type: %d, content: { .data = '%s', \t .size = %lu} ], count: %lu\n", (*tokens)[count-1].type, (*tokens)[count-1].content.data, (*tokens)[count-1].content.size, count);
     return true;
@@ -65,7 +64,7 @@ void print_tokens(JSONToken* tokens) {
     }
 }
 
-int count = 0;
+int pair_count = 0;
 
 JSONToken*
 tokenize(char* buff) {
@@ -73,54 +72,56 @@ tokenize(char* buff) {
     *tokens_cap = CHUNK;
     JSONToken* tokens = malloc(CHUNK * sizeof(JSONToken));
     size_t* len = calloc(1, sizeof(size_t));
+    size_t count = 0;
     for(char* ptr = buff; *(ptr) != '\0';++ptr) {
         switch (*ptr) {
             case '"': {
-                if (*(ptr-1) != ':') count++;
-                add_token(&tokens, create_token(T_STRING, match_until_but_better(ptr+1, '"', len), len), tokens_cap);
+                if (*(ptr-1) != ':') pair_count++;
+                add_token(&tokens, create_token(T_STRING, match_until_but_better(ptr+1, '"', len), len), tokens_cap, count);
                 ptr += (*len+1);
             } break;
             case ':': {
                 *len=1;
-                add_token(&tokens, create_token(T_COLON, crt_str(":", 2), len), tokens_cap);
+                add_token(&tokens, create_token(T_COLON, crt_str(":", 2), len), tokens_cap, count);
             } break;
             case ',': {
                 *len=1;
-                add_token(&tokens, create_token(T_COMMA, crt_str(",", 2), len), tokens_cap);
+                add_token(&tokens, create_token(T_COMMA, crt_str(",", 2), len), tokens_cap, count);
             } break;
             case '{': {
                 *len=1;
-                add_token(&tokens, create_token(T_LBRACE, crt_str("{", 2), len), tokens_cap);
+                add_token(&tokens, create_token(T_LBRACE, crt_str("{", 2), len), tokens_cap, count);
             } break;
             case '}': {
                 *len=1;
-                add_token(&tokens, create_token(T_RBRACE, crt_str("}", 2), len), tokens_cap);
+                add_token(&tokens, create_token(T_RBRACE, crt_str("}", 2), len), tokens_cap, count);
             } break;
             case '[': {
                 *len=1;
-                add_token(&tokens, create_token(T_LBRACKET, crt_str("[", 2), len), tokens_cap);
+                add_token(&tokens, create_token(T_LBRACKET, crt_str("[", 2), len), tokens_cap, count);
                 //printf("$ %s", tokens[0].content.data);
             } break;
             case ']': {
                 *len=1;
-                add_token(&tokens, create_token(T_RBRACKET, crt_str("]", 2), len), tokens_cap);
+                add_token(&tokens, create_token(T_RBRACKET, crt_str("]", 2), len), tokens_cap, count);
             } break;
             case 'n': {
                 if(check_match(ptr, "null", 4) == true) {
                     *len=4;
-                    add_token(&tokens, create_token(T_NULL, crt_str("null", 5), len), tokens_cap);
+                    add_token(&tokens, create_token(T_NULL, crt_str("null", 5), len), tokens_cap, count);
                     ptr+=3;
                 }
             } break;
         }
         //printf("-- \t%c\n\n", *ptr);
         if ('0' <= *ptr && *ptr <= '9' || *ptr == '.' || *ptr == '-') {
-            add_token(&tokens, create_token(T_NUMBER, match_until_opts_but_better(ptr, ",}]", len), len), tokens_cap);
+            add_token(&tokens, create_token(T_NUMBER, match_until_opts_but_better(ptr, ",}]", len), len), tokens_cap, count);
             ptr += (*len)-1;
         }
+        count++;
     }
     *len = 0;
-    add_token(&tokens, create_token(T_EOF, crt_str("EOF", 4), len), tokens_cap);
+    add_token(&tokens, create_token(T_EOF, crt_str("EOF", 4), len), tokens_cap, count);
     print_tokens(tokens);
     free(len);
     free(tokens_cap);
@@ -456,7 +457,6 @@ ast(JSONToken *tokens) {
                 }
                 free(tmp->pair_arr);
                 free(tmp);
-                //hashtable_free(obj);
                 break;
             case T_LBRACKET:
                 push(&tracker, ptr, VALUE);
@@ -539,7 +539,7 @@ JSON json_load(const char* src) {
     buff = lex(buff);
     //printf("%s\n", buff);
     JSONToken* tokens = tokenize(buff);
-    free(buff);
+    if (g_settings.flags & O_READ_FROM_FILE) free(buff);
     JSON res = ast(tokens);
     free(length);
     free_tokens(&tokens);
