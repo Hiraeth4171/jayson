@@ -8,10 +8,10 @@
 //          jsonNumber: a generic number type for floats, ints, and whatevers,
 
 enum options {
-    O_READ_FROM_FILE = 0x000001,
-    O_DYNAMIC = 0x000010,
-    O_ALLOW_COMMENTS = 0x000100,
-    O_ALLOW_TRAILING_COMMAS = 0x001000,
+    O_READ_FROM_FILE = 1,
+    O_DYNAMIC = 1<<1,
+    O_ALLOW_COMMENTS = 1<<2,
+    O_ALLOW_TRAILING_COMMAS = 1<<3,
     // more options later
 };
 //#define DEBUG
