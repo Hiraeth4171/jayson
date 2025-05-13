@@ -7,16 +7,16 @@
 //          jsonString: easier to work with strings,
 //          jsonNumber: a generic number type for floats, ints, and whatevers,
 
-enum options {
+enum jayson_options {
     O_READ_FROM_FILE = 0x000001,
     O_DYNAMIC = 0x000010,
     O_ALLOW_COMMENTS = 0x000100,
     O_ALLOW_TRAILING_COMMAS = 0x001000,
     // more options later
 };
-//#define DEBUG
+//#define jayson_DEBUG
 
-#ifdef DEBUG
+#ifdef jayson_DEBUG
 
 const char* lookup[] = {
     "NULL",
@@ -38,7 +38,7 @@ const char* lookup[] = {
 typedef struct JSONArray JSONArray;
 typedef struct JSONValue JSONValue;
 typedef struct JSONPair JSONPair;
-typedef struct Node Node;
+typedef struct jayson_Node jayson_Node;
 
 typedef enum {
     T_NULL,
@@ -51,12 +51,12 @@ typedef enum {
     T_COLON,
     T_COMMA,
     T_EOF, // special terminator token
-} JaysonTokenType;
+} jayson_TokenType;
 
 typedef struct {
     size_t size;
     char* data;
-} String;
+} jayson_String;
 
 typedef enum {
     JT_STRING,
@@ -69,7 +69,7 @@ typedef enum {
 
 typedef struct {
     size_t length;
-    Node** items;
+    jayson_Node** items;
 } JSONObject;
 
 struct JSONArray {
@@ -80,7 +80,7 @@ struct JSONArray {
 struct JSONValue {
     JSONType type;
     union {
-        String str;
+        jayson_String str;
         union {
             long integer;
             double floating_point;
@@ -91,18 +91,18 @@ struct JSONValue {
 };
 
 struct JSONPair {
-    String key;
+    jayson_String key;
     struct JSONValue* val;
 };
 
-struct Node {
+struct jayson_Node {
     JSONPair* value;
-    Node* next;
+    jayson_Node* next;
 };
 
 typedef struct {
-    JaysonTokenType type;
-    String content;
+    jayson_TokenType type;
+    jayson_String content;
 } JSONToken;
 
 typedef struct JSON {
@@ -118,7 +118,6 @@ typedef struct JSON {
 
 void json_init(int flags);
 JSON json_load(const char* src);
-JSONToken* tokenize(char* buff);
 JSONValue* json_get(JSONObject* obj, char* key);
 char* json_stringify(JSON obj);
 void json_terminate(JSON json);

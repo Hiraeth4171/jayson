@@ -3,7 +3,7 @@
 
 
 char*
-read_file(const char* filepath, long* length) {
+jayson_read_file(const char* filepath, long* length) {
     FILE* fd = fopen(filepath, "r");
     fseek(fd, 0L, SEEK_END);
     long pos = ftell(fd);
@@ -17,7 +17,7 @@ read_file(const char* filepath, long* length) {
 }
 
 char*
-lex(char* buff) {
+jayson_lex(char* buff) {
     char *ptr = buff, in_str_flag = 1;
     unsigned long i = 0;
     for (;*(ptr+1) != '\0';++ptr,++i){
@@ -32,14 +32,14 @@ lex(char* buff) {
 }
 
 bool
-check_match(char* src, const char* match, char len) {
+jayson_check_match(char* src, const char* match, char len) {
     char i = 0, *ptr = src;
     for(;*ptr == match[i] && match[i] != '\0'; ++ptr, ++i);
     return (i-len);
 }
 
 
-void mem_cpy(char* dst, char* src, size_t count) {
+void jayson_mem_cpy(char* dst, char* src, size_t count) {
     for (size_t i = 0; i < count; ++i) *dst++ = *src++;
 }
 
@@ -47,7 +47,7 @@ void mem_cpy(char* dst, char* src, size_t count) {
 /*
  * Function provided by Octe™
  */
-char* match_until_but_better(char* src, const char ch, size_t *len){
+char* jayson_match_until_but_better(char* src, const char ch, size_t *len){
     if (!*src) return NULL;
     
     char* ptr = src;
@@ -55,11 +55,11 @@ char* match_until_but_better(char* src, const char ch, size_t *len){
 
     char* str = calloc(((*len = ptr - src)+1), sizeof(char));
     if (!str) return NULL;
-    mem_cpy(str, src, *len);
+    jayson_mem_cpy(str, src, *len);
     return str;
 }
 
-char* match_until(char* src, const char ch, size_t *len) {
+char* jayson_match_until(char* src, const char ch, size_t *len) {
     static int count = 0;
     if (*src == '\0') return NULL;
     char *ptr = src, *dst = malloc(32), *str = dst;
@@ -82,7 +82,7 @@ char* match_until(char* src, const char ch, size_t *len) {
     return dst;
 }
 
-bool check_opts(char* ptr, char* chs) {
+bool jayson_check_opts(char* ptr, char* chs) {
     for (char* ch = chs; *ch != '\0';++ch) if (*ptr == *ch) return false;
     return true;
 }
@@ -90,25 +90,25 @@ bool check_opts(char* ptr, char* chs) {
 /*
  * Function inspired by Octe™
  */
-char* match_until_opts_but_better(char* src, char* chs, size_t* len) {
+char* jayson_match_until_opts_but_better(char* src, char* chs, size_t* len) {
     if (!*src) return NULL;
 
     char* ptr = src;
-    for(;!check_opts(ptr, chs) && *ptr != '\0'; ++ptr);
+    for(;!jayson_check_opts(ptr, chs) && *ptr != '\0'; ++ptr);
 
     char* str = calloc(((*len = ptr - src)+1),sizeof(char));
     if(!str) return NULL;
-    mem_cpy(str, src, *len);
+    jayson_mem_cpy(str, src, *len);
     return str;
 }
 
 char*
-match_until_opts(char* src, char* chs, size_t *len) { // 9.2 chs = ",}]" 9.2<E>
+jayson_match_until_opts(char* src, char* chs, size_t *len) { // 9.2 chs = ",}]" 9.2<E>
     static int count = 0;
     if (*src == '\0') return NULL;
     char *ptr = src, *dst = malloc(32), *str = dst;
     size_t i = 1, cap = 32;
-    for(;!check_opts(ptr, chs) && *ptr != '\0'; ++ptr, ++str, ++i) {
+    for(;!jayson_check_opts(ptr, chs) && *ptr != '\0'; ++ptr, ++str, ++i) {
         if (i > cap) {
             cap += 32;
             dst = realloc(dst, cap);
@@ -125,25 +125,25 @@ match_until_opts(char* src, char* chs, size_t *len) { // 9.2 chs = ",}]" 9.2<E>
 }
 
 
-char str_cmp(const char* s1, const char* s2) {
+char jayson_str_cmp(const char* s1, const char* s2) {
     while(*s1 && *s1 == *s2) {s1++; s2++;}
     return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
 
-void str_cpy(char* dst, const char* src) {
+void jayson_str_cpy(char* dst, const char* src) {
     char* ptr = dst;
     while(*src) *ptr++ = *src++;
     *ptr = '\0';
 }
 
-size_t str_len(const char* str) {
+size_t jayson_str_len(const char* str) {
     size_t res = 0;
     while(*str++) res++;
     return res;
 }
 
 char*
-crt_str (char* str, size_t size) {
+jayson_crt_str (char* str, size_t size) {
     char* buff = malloc(size), *src = str, *dst = buff;
     while (*src) *dst++ = *src++;
     *dst = '\0';
