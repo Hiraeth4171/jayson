@@ -118,7 +118,7 @@ typedef struct JSON {
 
 void json_init(int flags);
 
-__attribute__((depricated("Use json_load_to instead")))
+__attribute__((deprecated("Use json_load_to instead")))
 JSON json_load(const char* src);
 char json_load_to(const char* src, JSON* json);
 JSONValue* json_get(JSONObject* obj, char* key);
