@@ -8,10 +8,10 @@
 //          jsonNumber: a generic number type for floats, ints, and whatevers,
 
 enum jayson_options {
-    O_READ_FROM_FILE = 0x000001,
-    O_DYNAMIC = 0x000010,
-    O_ALLOW_COMMENTS = 0x000100,
-    O_ALLOW_TRAILING_COMMAS = 0x001000,
+    O_READ_FROM_FILE = 1,
+    O_DYNAMIC = 1<<1,
+    O_ALLOW_COMMENTS = 1<<2,
+    O_ALLOW_TRAILING_COMMAS = 1<<3,
     // more options later
 };
 //#define jayson_DEBUG
@@ -117,7 +117,10 @@ typedef struct JSON {
 } JSON;
 
 void json_init(int flags);
+
+__attribute__((deprecated("Use json_load_to instead")))
 JSON json_load(const char* src);
+char json_load_to(const char* src, JSON* json);
 JSONValue* json_get(JSONObject* obj, char* key);
 char* json_stringify(JSON obj);
 void json_terminate(JSON json);

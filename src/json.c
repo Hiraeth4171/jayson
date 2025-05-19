@@ -546,6 +546,27 @@ JSON json_load(const char* src) {
     return res;
 }
 
+char json_load_to(const char* src, JSON* json) {
+    long* length = malloc(sizeof(long));
+    if (g_settings.flags & O_READ_FROM_FILE) {
+        int result = access(src, R_OK);
+
+        if (result == -1) { 
+            jayson_log_err("json_load failed"); 
+            return 0;
+        }
+        
+    }
+    char* buff = g_settings.flags & O_DYNAMIC ? (char*)src : jayson_read_file(src, length);
+    buff = jayson_lex(buff);
+    JSONToken* tokens = jayson_tokenize(buff);
+    if (g_settings.flags & O_READ_FROM_FILE) free(buff);
+    *json = jayson_ast(tokens);
+    free(length);
+    jayson_free_tokens(&tokens);
+    return 1;
+}
+
 // http://www.cse.yorku.ca/~oz/hash.html#sdbm
 size_t jayson_hash_function(char* key, size_t size) {
     unsigned long hash = 0;
