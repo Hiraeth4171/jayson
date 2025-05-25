@@ -6,7 +6,7 @@ setup:
 	@echo " - you can edit the flags in the makefile to remove the debug build stuff"
 
 build: FLAGS = -ggdb
-build: build-lib build-test
+build: build-lib
 
 build-objects:
 	gcc -c $(FLAGS) src/json.c -o obj/json.o
