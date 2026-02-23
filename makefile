@@ -24,11 +24,11 @@ shared: FLAGS = -fPIC -ggdb
 shared: build-objects shared-lib install shared-test
 
 shared-lib:
-		gcc -shared $(objects) -o bin/shared/libjayson.so
+		gcc -shared $(FLAGS) $(objects) -o bin/shared/libjayson.so
 
 # example shared library build
 shared-test:
-	gcc shared-test.c -ljayson -o shared-test -I./src/include/
+	gcc shared-test.c  -ljayson -o shared-test -I./src/include/
 
 # install shared library build | you might wanna change these to be less system-wide
 install: 
