@@ -25,6 +25,10 @@ json_init(int flags) {
     //printf("\n\tSettings :\t%u\n\n", g_settings.flags);
 }
 
+static struct BuilderState {
+    JSONTypeTopLevel type;
+    JSON json;
+} bstate;
 
 bool
 jayson_add_token(JSONToken** tokens, JSONToken token, size_t *tokens_cap, size_t count) {
@@ -231,6 +235,11 @@ JSONValue* jayson_get_value(JSONToken* tok) {
             else  res->floating_point = atof(tok->content.data);
             free(tok->content.data);
             break;
+        case T_BOOLEAN:
+             res->type = JT_BOOLEAN;
+             res->boolean = jayson_str_cmp(tok->content.data, "true") == 0 ? true : false;
+             free(tok->content.data);
+             break;
         default:
             printf("YOU ABSOLUTE FUCKIN BAFFOON\n");
             break;
@@ -267,8 +276,96 @@ JSONValue* json_get(JSONObject* obj, char* key){
     return v;
 }
 
+void jayson_build_start(JSONTypeTopLevel type, size_t expected_size) {
+    bstate.type = type;
+    if (type == OBJECT) bstate.json.obj = jayson_hashtable_init(expected_size);
+    else {
+        bstate.json.arr = malloc(sizeof(JSONArray));
+        bstate.json.arr->length = expected_size;
+        bstate.json.arr->items = malloc(expected_size * sizeof(JSONValue));
+    }
+}
+
+int jayson_build_add_string(char* key, char* str, size_t len) {
+    if (bstate.type != OBJECT) return -1;
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=len}, .val = &(JSONValue){.type = JT_STRING, .str = (jayson_String){.data=str,.size=len}}});
+    return 0;
+}
+
+int jayson_build_add_number(char* key, char* num_str, size_t len) {
+    if (bstate.type != OBJECT) return -1;
+    JSONValue val;
+    char* ptr = num_str;
+    val.type = JT_NUMBER_LONG;
+    for(;*ptr != '\0';++ptr) if (*ptr == '.') val.type = JT_NUMBER_DOUBLE;
+    if (val.type == JT_NUMBER_LONG) val.integer = strtol(num_str, &ptr, 10);
+    else  val.floating_point = atof(num_str);
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=len}, .val = &val});
+    return 0;
+}
+
+int jayson_build_add_bool(char* key, bool boolean) {
+    if (bstate.type != OBJECT) return -1;
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=jayson_str_len(key)}, .val = &(JSONValue){.type = JT_NULL}});
+    return 0;
+}
+
+int jayson_build_add_pair(char* key, JSONValue* val) {
+    if (bstate.type != OBJECT) return -1;
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=jayson_str_len(key)}, .val = val});
+    return 0;
+}
+
+int jayson_build_add_value(JSONValue* val) {
+    if (bstate.type != ARRAY) return -1;
+    bstate.json.arr->items[bstate.json.arr->length++] = *val;
+    return 0;
+}
+
+JSON *jayson_build_end() {
+    JSON* res = malloc(sizeof(JSON));
+    if (bstate.type == OBJECT) {
+        res->type = OBJECT;
+        res->obj = bstate.json.obj;
+        bstate.json.obj = NULL;
+    } else {
+        res->type = ARRAY;
+        res->arr = bstate.json.arr;
+        bstate.json.arr = NULL;
+    }
+    return res; // user is expected to free this
+}
+
+void jayson_array_free(JSONArray** arr);
+
+void jayson_free_value(JSONValue* val) {
+    switch (val->type) {
+        case JT_STRING:
+            free(val->str.data);
+            break;
+        case JT_OBJECT:
+            jayson_hashtable_free(&(val->object));
+            break;
+        case JT_ARRAY:
+            jayson_array_free(&(val->arr));
+            break;
+        default:
+            break;
+    }
+    free(val);
+}
+
+void jayson_array_free (JSONArray** arr) {
+    for(size_t i = 0; i < (*arr)->length; ++i) {
+        jayson_free_value(&((*arr)->items[i]));
+    }
+    free((*arr)->items);
+    free(*arr);
+}
+
 void json_terminate(JSON json) {
     if (json.type == OBJECT) jayson_hashtable_free(&json.obj);
+    else jayson_array_free(&json.arr);
 }
 
 void jayson_value_stringify(JSONValue val, char** out);
@@ -347,6 +444,15 @@ void jayson_value_stringify(JSONValue val, char** out) {
         case JT_ARRAY:
             jayson_arr_stringify(val.arr, out);
             break;
+        case JT_BOOLEAN:
+             if (val.boolean) {
+                 jayson_str_cpy(*out, "true");
+                 (*out) += 4;
+             } else {
+                 jayson_str_cpy(*out, "false");
+                 (*out) += 5;
+             }
+             break;
     }
 }
 
@@ -365,6 +471,9 @@ void jayson_count_value(JSONValue val, size_t* count) {
         case JT_STRING:
             (*count) += val.str.size+3;
             break;
+        case JT_BOOLEAN:
+             (*count) += val.boolean ? 4 : 5;
+             break;
         case JT_NUMBER_LONG:
             sprintf(_out, "%lu", val.integer);
             (*count) += jayson_str_len(_out)+1;
@@ -500,6 +609,9 @@ jayson_ast(JSONToken *tokens) {
                     free(str);
                 }
                 break;
+            case T_BOOLEAN: // if prev = , or prev = [ add_to_stack_array, else ignore
+                if ((ptr-1)->type == T_COMMA || (ptr-1)->type == T_LBRACKET) jayson_add_to_stack_array(&tracker, jayson_get_value(ptr));
+                break;
             case T_COMMA: // mostly ignore for now
                 break;
             case T_NULL: // if prev = , or prev = [ add_to_stack_array, else ignore
@@ -621,26 +733,6 @@ void jayson_hashtable_add(JSONObject* obj, JSONPair* pair) {
     obj->items[i] = (jayson_Node*)malloc(sizeof(jayson_Node));
     *obj->items[i] = (jayson_Node){.value = _pair, .next = NULL};
     return;
-}
-
-void jayson_array_free(JSONArray** arr) {
-    for(size_t i = 0; i < (*arr)->length; ++i) {
-        switch ((*arr)->items[i].type) {
-            case JT_STRING:
-                free((*arr)->items[i].str.data);
-                break;
-            case JT_OBJECT:
-                jayson_hashtable_free(&((*arr)->items[i].object));
-                break;
-            case JT_ARRAY:
-                jayson_array_free(&((*arr)->items[i].arr));
-                break;
-            default:
-                break;
-        }
-    }
-    free((*arr)->items);
-    free(*arr);
 }
 
 void jayson_value_free(JSONValue** val) {

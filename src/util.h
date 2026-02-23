@@ -18,5 +18,6 @@ char* jayson_match_until_opts_but_better(char*, char*, size_t*);
 char* jayson_crt_str (char*, size_t);
 char jayson_str_cmp (const char*, const char*);
 void jayson_str_cpy (char*, const char*);
+void jayson_mem_cpy (char*, char*, size_t);
 size_t jayson_str_len (const char*);
 #endif

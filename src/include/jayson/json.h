@@ -1,6 +1,7 @@
 #ifndef JSON_H
 #define JSON_H
 #include <stddef.h>
+#include <stdbool.h>
 
 // TODO:    jsonObject: hashtable, 
 //          jsonArray: easier to work with array, length, item type, item type size, 
@@ -42,6 +43,7 @@ typedef struct jayson_Node jayson_Node;
 
 typedef enum {
     T_NULL,
+    T_BOOLEAN,
     T_LBRACE,
     T_RBRACE,
     T_LBRACKET,
@@ -64,6 +66,7 @@ typedef enum {
     JT_NUMBER_DOUBLE,
     JT_OBJECT,
     JT_ARRAY,
+    JT_BOOLEAN,
     JT_NULL,
 } JSONType;
 
@@ -84,6 +87,7 @@ struct JSONValue {
         union {
             long integer;
             double floating_point;
+            bool boolean;
         };
         JSONObject* object;
         JSONArray* arr;
@@ -105,11 +109,13 @@ typedef struct {
     jayson_String content;
 } JSONToken;
 
+typedef enum {
+    OBJECT,
+    ARRAY
+} JSONTypeTopLevel;
+
 typedef struct JSON {
-    enum {
-        OBJECT,
-        ARRAY
-    } type;
+    JSONTypeTopLevel type;
     union {
         JSONObject* obj;
         JSONArray* arr;
