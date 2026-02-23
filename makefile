@@ -5,7 +5,7 @@ setup:
 	mkdir -p obj bin bin/shared
 	@echo " - you can edit the flags in the makefile to remove the debug build stuff"
 
-build: FLAGS = -ggdb
+build: FLAGS = -ggdb -fPIC
 build: build-lib
 
 build-objects:
