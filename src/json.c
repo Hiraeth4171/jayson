@@ -363,9 +363,9 @@ void jayson_array_free (JSONArray** arr) {
     free(*arr);
 }
 
-void json_terminate(JSON json) {
-    if (json.type == OBJECT) jayson_hashtable_free(&json.obj);
-    else jayson_array_free(&json.arr);
+void json_terminate(JSON *json) {
+    if (json->type == OBJECT) jayson_hashtable_free(&json->obj);
+    else jayson_array_free(&json->arr);
 }
 
 void jayson_value_stringify(JSONValue val, char** out);
