@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "./include/jayson/json.h"
 #include "./include/jayson/logging.h"
@@ -32,27 +33,21 @@ static struct BuilderState {
 
 bool
 jayson_add_token(JSONToken** tokens, JSONToken token, size_t *tokens_cap, size_t count) {
-    if (count >= *tokens_cap) {
+    while (count >= *tokens_cap) {
         *tokens_cap += jayson_CHUNK;
         JSONToken* tmp = (JSONToken*)realloc(*tokens, (*tokens_cap) * sizeof(JSONToken));
         if (!tmp) {
-            printf("wha\n\n");
             return false;
         }
         *tokens = tmp;
-        //printf("\t\tadd_token - tokens_cap: %lu, count: %lu\n\n", *tokens_cap, count);
     }
-    //if(token.type != T_EOF) printf("-[ type: %d, content: { .data = '%s', \t .size = %lu} ], count: %lu\n", token.type, token.content.data, token.content.size, count);
 
     (*tokens)[count] = token;
-    //printf("hi\n\n");
-    //printf("----- [ type: %d, content: { .data = '%s', \t .size = %lu} ], count: %lu\n", (*tokens)[count-1].type, (*tokens)[count-1].content.data, (*tokens)[count-1].content.size, count);
     return true;
 }
 
 JSONToken
 jayson_create_token(jayson_TokenType type, char* str, size_t *len) {
-    //printf("1: %d, 2: %s, 3: %lu", type, str, *len);
     if (str == NULL) exit(-1);
     return (JSONToken){ .type = type, .content = (jayson_String){ .size = *len, .data = str}};
 }
@@ -62,8 +57,6 @@ void jayson_print_tokens(JSONToken* tokens) {
     for (;ptr->type != T_EOF;++ptr) {
 #ifdef DEBUG
         printf("[ type: %s, content: { .data = '%s', \t .size = %lu} ],\n", lookup[ptr->type], ptr->content.data, ptr->content.size);
-#else
-        //printf("[ type: %d, content: { .data = '%s', \t .size = %lu} ],\n", ptr->type, ptr->content.data, ptr->content.size);
 #endif
     }
 }
@@ -80,52 +73,63 @@ jayson_tokenize(char* buff) {
     for(char* ptr = buff; *(ptr) != '\0';++ptr) {
         switch (*ptr) {
             case '"': {
-                if (*(ptr-1) != ':') jayson_pair_count++;
-                jayson_add_token(&tokens, jayson_create_token(T_STRING, jayson_match_until_but_better(ptr+1, '"', len), len), tokens_cap, count);
+                if (ptr > buff && *(ptr-1) != ':') jayson_pair_count++;
+                jayson_add_token(&tokens, jayson_create_token(T_STRING, jayson_match_until_but_better(ptr+1, '"', len), len), tokens_cap, count++);
                 ptr += (*len+1);
             } break;
             case ':': {
                 *len=1;
-                jayson_add_token(&tokens, jayson_create_token(T_COLON, jayson_crt_str(":", 2), len), tokens_cap, count);
+                jayson_add_token(&tokens, jayson_create_token(T_COLON, jayson_crt_str(":", 2), len), tokens_cap, count++);
             } break;
             case ',': {
                 *len=1;
-                jayson_add_token(&tokens, jayson_create_token(T_COMMA, jayson_crt_str(",", 2), len), tokens_cap, count);
+                jayson_add_token(&tokens, jayson_create_token(T_COMMA, jayson_crt_str(",", 2), len), tokens_cap, count++);
             } break;
             case '{': {
                 *len=1;
-                jayson_add_token(&tokens, jayson_create_token(T_LBRACE, jayson_crt_str("{", 2), len), tokens_cap, count);
+                jayson_add_token(&tokens, jayson_create_token(T_LBRACE, jayson_crt_str("{", 2), len), tokens_cap, count++);
             } break;
             case '}': {
                 *len=1;
-                jayson_add_token(&tokens, jayson_create_token(T_RBRACE, jayson_crt_str("}", 2), len), tokens_cap, count);
+                jayson_add_token(&tokens, jayson_create_token(T_RBRACE, jayson_crt_str("}", 2), len), tokens_cap, count++);
             } break;
             case '[': {
                 *len=1;
-                jayson_add_token(&tokens, jayson_create_token(T_LBRACKET, jayson_crt_str("[", 2), len), tokens_cap, count);
-                //printf("$ %s", tokens[0].content.data);
+                jayson_add_token(&tokens, jayson_create_token(T_LBRACKET, jayson_crt_str("[", 2), len), tokens_cap, count++);
             } break;
             case ']': {
                 *len=1;
-                jayson_add_token(&tokens, jayson_create_token(T_RBRACKET, jayson_crt_str("]", 2), len), tokens_cap, count);
+                jayson_add_token(&tokens, jayson_create_token(T_RBRACKET, jayson_crt_str("]", 2), len), tokens_cap, count++);
             } break;
             case 'n': {
                 if(jayson_check_match(ptr, "null", 4) == true) {
                     *len=4;
-                    jayson_add_token(&tokens, jayson_create_token(T_NULL, jayson_crt_str("null", 5), len), tokens_cap, count);
+                    jayson_add_token(&tokens, jayson_create_token(T_NULL, jayson_crt_str("null", 5), len), tokens_cap, count++);
                     ptr+=3;
                 }
             } break;
+            case 't': {
+                if(jayson_check_match(ptr, "true", 4) == true) {
+                    *len=4;
+                    jayson_add_token(&tokens, jayson_create_token(T_BOOLEAN, jayson_crt_str("true", 5), len), tokens_cap, count++);
+                    ptr+=3;
+                }
+            } break;
+            case 'f': {
+                if(jayson_check_match(ptr, "false", 5) == true) {
+                    *len=5;
+                    jayson_add_token(&tokens, jayson_create_token(T_BOOLEAN, jayson_crt_str("false", 6), len), tokens_cap, count++);
+                    ptr+=4;
+                }
+            } break;
         }
-        //printf("-- \t%c\n\n", *ptr);
         if ('0' <= *ptr && *ptr <= '9' || *ptr == '.' || *ptr == '-') {
-            jayson_add_token(&tokens, jayson_create_token(T_NUMBER, jayson_match_until_opts_but_better(ptr, ",}]", len), len), tokens_cap, count);
+            jayson_add_token(&tokens, jayson_create_token(T_NUMBER, jayson_match_until_opts_but_better(ptr, ",}]", len), len), tokens_cap, count++);
             ptr += (*len)-1;
         }
-        count++;
     }
     *len = 0;
-    jayson_add_token(&tokens, jayson_create_token(T_EOF, jayson_crt_str("EOF", 4), len), tokens_cap, count);
+    jayson_add_token(&tokens, jayson_create_token(T_EOF, jayson_crt_str("EOF", 4), len), tokens_cap, count++);
     jayson_print_tokens(tokens);
     free(len);
     free(tokens_cap);
@@ -241,36 +245,45 @@ JSONValue* jayson_get_value(JSONToken* tok) {
              free(tok->content.data);
              break;
         default:
-            printf("YOU ABSOLUTE FUCKIN BAFFOON\n");
+            printf("UNKNOWN TOKEN: %s\n", tok->content.data);
             break;
     }
     return res;
 }
 
 JSONValue* json_get(JSONObject* obj, char* key){
+    if (!obj || !key) return NULL;
     JSONObject* cur = obj; char* end_ptr = key; 
     size_t *len = malloc(sizeof(size_t)); *len = 0;
-    JSONValue* v;
+    JSONValue* v = NULL;
     while(*end_ptr != '\0') end_ptr++;
 
     while(key+*len < end_ptr) {
+        if (!cur) { free(len); return NULL; }
         size_t tmp = *len;
         char* k = jayson_match_until_opts_but_better(key+*len, ".[", len);
         (*len)+=tmp+1;
         if (*(key+*len-1) == '[') {
-            v = jayson_hashtable_get(cur, k)->val;
+            JSONPair* v_tmp = jayson_hashtable_get(cur, k);
+            if (v_tmp == NULL) { free(k); free(len); return NULL; }
+            v = v_tmp->val;
             char* end = key+*len;
-            while(*end++ != ']');
+            while(*end != ']' && *end != '\0') end++;
             long index = strtol(key+*len, &end, 10);
-            v = v->arr->items+index;
+            if (v && v->type == JT_ARRAY && index >= 0 && (size_t)index < v->arr->length) v = v->arr->items+index;
+            else { free(k); free(len); return NULL; }
             (*len)+=(end - (key+*len)+2);
         } else {
-            v = jayson_hashtable_get(cur, k)->val;
+            JSONPair* v_tmp = jayson_hashtable_get(cur, k);
+            if (v_tmp == NULL) { free(k); free(len); return NULL; }
+            v = v_tmp->val;
         }
-        if (key+*len < end_ptr) cur = v->object;
+        if (key+*len < end_ptr) {
+            if (v && v->type == JT_OBJECT) cur = v->object;
+            else { free(k); free(len); return NULL; }
+        }
         free(k);
     }
-    if (v == NULL) exit(1);
     free(len);
 
     return v;
@@ -278,41 +291,45 @@ JSONValue* json_get(JSONObject* obj, char* key){
 
 void jayson_build_start(JSONTypeTopLevel type, size_t expected_size) {
     bstate.type = type;
-    if (type == OBJECT) bstate.json.obj = jayson_hashtable_init(expected_size);
+    if (type == OBJECT) bstate.json.obj = jayson_hashtable_init(expected_size == 0 ? 1 : expected_size);
     else {
         bstate.json.arr = malloc(sizeof(JSONArray));
-        bstate.json.arr->length = expected_size;
+        bstate.json.arr->length = 0;
         bstate.json.arr->items = malloc(expected_size * sizeof(JSONValue));
     }
 }
 
 int jayson_build_add_string(char* key, char* str, size_t len) {
     if (bstate.type != OBJECT) return -1;
-    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=len}, .val = &(JSONValue){.type = JT_STRING, .str = (jayson_String){.data=str,.size=len}}});
+    JSONValue* val = malloc(sizeof(JSONValue));
+    *val = (JSONValue){.type = JT_STRING, .str = (jayson_String){.data=jayson_crt_str(str, len+1),.size=len}};
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = jayson_crt_str(key, len+1),.size=len}, .val = val});
     return 0;
 }
 
 int jayson_build_add_number(char* key, char* num_str, size_t len) {
     if (bstate.type != OBJECT) return -1;
-    JSONValue val;
+    JSONValue* val = malloc(sizeof(JSONValue));
     char* ptr = num_str;
-    val.type = JT_NUMBER_LONG;
-    for(;*ptr != '\0';++ptr) if (*ptr == '.') val.type = JT_NUMBER_DOUBLE;
-    if (val.type == JT_NUMBER_LONG) val.integer = strtol(num_str, &ptr, 10);
-    else  val.floating_point = atof(num_str);
-    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=len}, .val = &val});
+    val->type = JT_NUMBER_LONG;
+    for(;*ptr != '\0';++ptr) if (*ptr == '.') val->type = JT_NUMBER_DOUBLE;
+    if (val->type == JT_NUMBER_LONG) val->integer = strtol(num_str, &ptr, 10);
+    else  val->floating_point = atof(num_str);
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = jayson_crt_str(key, len+1),.size=len}, .val = val});
     return 0;
 }
 
 int jayson_build_add_bool(char* key, bool boolean) {
     if (bstate.type != OBJECT) return -1;
-    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=jayson_str_len(key)}, .val = &(JSONValue){.type = JT_NULL}});
+    JSONValue* val = malloc(sizeof(JSONValue));
+    *val = (JSONValue){.type = JT_BOOLEAN, .boolean = boolean};
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = jayson_crt_str(key, jayson_str_len(key)+1),.size=jayson_str_len(key)}, .val = val});
     return 0;
 }
 
 int jayson_build_add_pair(char* key, JSONValue* val) {
     if (bstate.type != OBJECT) return -1;
-    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = key,.size=jayson_str_len(key)}, .val = val});
+    jayson_hashtable_add(bstate.json.obj, &(JSONPair){.key = (jayson_String){.data = jayson_crt_str(key, jayson_str_len(key)+1),.size=jayson_str_len(key)}, .val = val});
     return 0;
 }
 
@@ -356,14 +373,29 @@ void jayson_free_value(JSONValue* val) {
 }
 
 void jayson_array_free (JSONArray** arr) {
+    if (!arr || !*arr) return;
     for(size_t i = 0; i < (*arr)->length; ++i) {
-        jayson_free_value(&((*arr)->items[i]));
+        switch ((*arr)->items[i].type) {
+            case JT_STRING:
+                free((*arr)->items[i].str.data);
+                break;
+            case JT_OBJECT:
+                jayson_hashtable_free(&((*arr)->items[i].object));
+                break;
+            case JT_ARRAY:
+                jayson_array_free(&((*arr)->items[i].arr));
+                break;
+            default:
+                break;
+        }
     }
     free((*arr)->items);
     free(*arr);
+    *arr = NULL;
 }
 
 void json_terminate(JSON *json) {
+    if (!json) return;
     if (json->type == OBJECT) jayson_hashtable_free(&json->obj);
     else jayson_array_free(&json->arr);
 }
@@ -397,7 +429,11 @@ void jayson_obj_stringify(JSONObject* obj, char** out) {
             jayson_pair_stringify(cur->value, out);
         }
     }
-    *((*out)-1) = '}';
+    if (*((*out)-1) == ',') *((*out)-1) = '}';
+    else {
+        **out = '}';
+        (*out)++;
+    }
 }
 
 void jayson_arr_stringify(JSONArray* arr, char** out) {
@@ -408,7 +444,11 @@ void jayson_arr_stringify(JSONArray* arr, char** out) {
         **out = ',';
         (*out)++;
     }
-    *((*out)-1) = ']';
+    if (*((*out)-1) == ',') *((*out)-1) = ']';
+    else {
+        **out = ']';
+        (*out)++;
+    }
 }
 
 void jayson_value_stringify(JSONValue val, char** out) {
@@ -427,7 +467,7 @@ void jayson_value_stringify(JSONValue val, char** out) {
             (*out) += 4;
             break;
         case JT_NUMBER_LONG:
-            sprintf(_out, "%lu", val.integer);
+            sprintf(_out, "%ld", val.integer);
             jayson_str_cpy(*out, _out);
             _len = jayson_str_len(_out);
             (*out) += _len;
@@ -475,7 +515,7 @@ void jayson_count_value(JSONValue val, size_t* count) {
              (*count) += val.boolean ? 4 : 5;
              break;
         case JT_NUMBER_LONG:
-            sprintf(_out, "%lu", val.integer);
+            sprintf(_out, "%ld", val.integer);
             (*count) += jayson_str_len(_out)+1;
             break;
         case JT_NUMBER_DOUBLE:
@@ -490,6 +530,7 @@ void jayson_count_value(JSONValue val, size_t* count) {
 void jayson_count_pair(JSONPair* pair, size_t* count) {
     (*count) += pair->key.size+3;
     jayson_count_value(*pair->val, count);
+    (*count)+=1; // for comma
 }
 
 void jayson_count_obj(JSONObject* obj, size_t* count) {
@@ -509,25 +550,23 @@ void jayson_count_obj(JSONObject* obj, size_t* count) {
 void jayson_count_arr(JSONArray* arr, size_t* count) {
     for(size_t i = 0; i < arr->length; ++i) {
         jayson_count_value(arr->items[i], count);
+        (*count)+=1;
     }
-    (*count)+=1;
+    (*count)+=2;
 }
 
 size_t jayson_count_chars(JSON json) {
     size_t count = 0;
     if(json.type == OBJECT) jayson_count_obj(json.obj, &count);
     else jayson_count_arr(json.arr, &count);
-    //printf("\n\t--- %lu\n", count);
     return count;
 }
 
 char* json_stringify(JSON json) {
-    size_t count = jayson_count_chars(json)+1;
+    size_t count = jayson_count_chars(json)+2;
     char* out = calloc(1, count); char* ptr = out;
     if(json.type == OBJECT) jayson_obj_stringify(json.obj, &ptr);
     else jayson_arr_stringify(json.arr, &ptr);
-    out[count] = '\0';
-    //printf("\n\t--- %lu\n", str_len(out));
     return out;
 }
 
@@ -550,7 +589,8 @@ jayson_ast(JSONToken *tokens) {
                 break;
             case T_RBRACE: // populate from tmp->pair_arr
                 tmp = jayson_pop(&tracker);
-                JSONObject* obj = jayson_hashtable_init(tmp->size);
+                size_t init_size = tmp->size == 0 ? 1 : tmp->size;
+                JSONObject* obj = jayson_hashtable_init(init_size);
                 for(size_t i = 0; i < tmp->size; ++i) jayson_hashtable_add(obj, tmp->pair_arr+i);
                 if (tmp == check) {
                     result.type = OBJECT;
@@ -599,23 +639,35 @@ jayson_ast(JSONToken *tokens) {
                 
                 }
                 break;
-            case T_NUMBER: // if prev = , or prev = [ add_to_stack_array, else ignore
-                if ((ptr-1)->type == T_COMMA || (ptr-1)->type == T_LBRACKET) jayson_add_to_stack_array(&tracker, jayson_get_value(ptr));
+            case T_NUMBER:
+                if (ptr > tokens && ((ptr-1)->type == T_COMMA || (ptr-1)->type == T_LBRACKET)) {
+                    JSONValue* val = jayson_get_value(ptr);
+                    jayson_add_to_stack_array(&tracker, val);
+                    free(val);
+                }
                 break;
-            case T_STRING: // if prev = , or prev = [ add_to_stack_array, else ignore
+            case T_STRING:
                 if ((ptr+1)->type != T_COLON) {
                     JSONValue* str = jayson_get_value(ptr);
                     jayson_add_to_stack_array(&tracker, str);
                     free(str);
                 }
                 break;
-            case T_BOOLEAN: // if prev = , or prev = [ add_to_stack_array, else ignore
-                if ((ptr-1)->type == T_COMMA || (ptr-1)->type == T_LBRACKET) jayson_add_to_stack_array(&tracker, jayson_get_value(ptr));
+            case T_BOOLEAN:
+                if (ptr > tokens && ((ptr-1)->type == T_COMMA || (ptr-1)->type == T_LBRACKET)) {
+                    JSONValue* val = jayson_get_value(ptr);
+                    jayson_add_to_stack_array(&tracker, val);
+                    free(val);
+                }
                 break;
-            case T_COMMA: // mostly ignore for now
+            case T_COMMA:
                 break;
-            case T_NULL: // if prev = , or prev = [ add_to_stack_array, else ignore
-                if ((ptr-1)->type == T_COMMA || (ptr-1)->type == T_LBRACKET) jayson_add_to_stack_array(&tracker, jayson_get_value(ptr));
+            case T_NULL:
+                if (ptr > tokens && ((ptr-1)->type == T_COMMA || (ptr-1)->type == T_LBRACKET)) {
+                    JSONValue* val = jayson_get_value(ptr);
+                    jayson_add_to_stack_array(&tracker, val);
+                    free(val);
+                }
                 break;
             case T_EOF:
                 break;
@@ -628,7 +680,7 @@ void jayson_free_tokens(JSONToken** tokens) {
     JSONToken* ptr = *tokens;
     for(;ptr->type != T_EOF; ++ptr) {
         switch (ptr->type) {
-            case T_STRING: case T_NUMBER:
+            case T_STRING: case T_NUMBER: case T_BOOLEAN:
                 break;
             default:
                 free(ptr->content.data);
@@ -639,19 +691,24 @@ void jayson_free_tokens(JSONToken** tokens) {
 }
 
 JSON json_load(const char* src) {
+    if (!src) return (JSON){0};
     long* length = malloc(sizeof(long));
     if (g_settings.flags & O_READ_FROM_FILE) {
         int result = access(src, R_OK);
         if (result == -1) { 
             jayson_log_err("json_load failed"); 
+            free(length);
+            return (JSON){0};
         }
     }
-    char* buff = g_settings.flags & O_DYNAMIC ? (char*)src : jayson_read_file(src, length);
-    //printf("%s\n", buff);
+    char* buff = g_settings.flags & O_DYNAMIC ? strdup(src) : jayson_read_file(src, length);
+    if (!buff) {
+        free(length);
+        return (JSON){0};
+    }
     buff = jayson_lex(buff);
-    //printf("%s\n", buff);
     JSONToken* tokens = jayson_tokenize(buff);
-    if (g_settings.flags & O_READ_FROM_FILE) free(buff);
+    free(buff);
     JSON res = jayson_ast(tokens);
     free(length);
     jayson_free_tokens(&tokens);
@@ -659,20 +716,26 @@ JSON json_load(const char* src) {
 }
 
 char json_load_to(const char* src, JSON* json) {
+    if (!src || !json) return 0;
     long* length = malloc(sizeof(long));
     if (g_settings.flags & O_READ_FROM_FILE) {
         int result = access(src, R_OK);
 
         if (result == -1) { 
             jayson_log_err("json_load failed"); 
+            free(length);
             return 0;
         }
         
     }
-    char* buff = g_settings.flags & O_DYNAMIC ? (char*)src : jayson_read_file(src, length);
+    char* buff = g_settings.flags & O_DYNAMIC ? strdup(src) : jayson_read_file(src, length);
+    if (!buff) {
+        free(length);
+        return 0;
+    }
     buff = jayson_lex(buff);
     JSONToken* tokens = jayson_tokenize(buff);
-    if (g_settings.flags & O_READ_FROM_FILE) free(buff);
+    free(buff);
     *json = jayson_ast(tokens);
     free(length);
     jayson_free_tokens(&tokens);
@@ -759,9 +822,8 @@ void jayson_pair_free(JSONPair** pair) {
 }
 
 void jayson_hashtable_free(JSONObject** obj) {
-    if ((*obj)->items == NULL) return;
+    if (!obj || !*obj || (*obj)->items == NULL) return;
     for (size_t i = 0; i < (*obj)->length; ++i) {
-        //printf("\n\t---  %lu, %lu\n", i, (*obj)->length);
         jayson_Node* cur = (*obj)->items[i];
         if (cur == NULL) continue;
         while (cur->next != NULL) {
@@ -775,5 +837,6 @@ void jayson_hashtable_free(JSONObject** obj) {
     }
     free((*obj)->items);
     free(*obj);
+    *obj = NULL;
 }
 

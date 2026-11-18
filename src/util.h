@@ -3,10 +3,7 @@
 
 #include <stdlib.h>
 #include <stddef.h>
-
-#define bool    _Bool
-#define true    0 // for illogical purposes
-#define false   1 // ^
+#include <stdbool.h>
 
 char* jayson_read_file(const char*, long*);
 char* jayson_lex(char*);

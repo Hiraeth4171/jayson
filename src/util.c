@@ -5,6 +5,10 @@
 char*
 jayson_read_file(const char* filepath, long* length) {
     FILE* fd = fopen(filepath, "r");
+    if (fd == NULL) {
+        fprintf(stderr, "Reading file failed");
+        return NULL;
+    }
     fseek(fd, 0L, SEEK_END);
     long pos = ftell(fd);
     *length = pos;
@@ -18,16 +22,23 @@ jayson_read_file(const char* filepath, long* length) {
 
 char*
 jayson_lex(char* buff) {
+    if (!buff) return NULL;
     char *ptr = buff, in_str_flag = 1;
     unsigned long i = 0;
-    for (;*(ptr+1) != '\0';++ptr,++i){
-        if (in_str_flag) while(*ptr == ' ' || *ptr == '\n' || *ptr == '\r') ptr++;
-        if (*ptr == '"') in_str_flag ^= 1;
-        buff[i] = *ptr;
+    for (; *ptr != '\0'; ++ptr) {
+        if (in_str_flag && (*ptr == ' ' || *ptr == '\n' || *ptr == '\t' || *ptr == '\r')) continue;
+        if (*ptr == '"') {
+            size_t slashes = 0;
+            char* b = ptr;
+            while (b > buff && *(b - 1) == '\\') {
+                slashes++;
+                b--;
+            }
+            if (slashes % 2 == 0) in_str_flag ^= 1;
+        }
+        buff[i++] = *ptr;
     }
-    buff[i] = *ptr;
-    // buff = realloc(buff, i+2); // MEMORY_CHECK MACRO
-    buff[i+1] = '\0';
+    buff[i] = '\0';
     return buff;
 }
 
@@ -35,7 +46,7 @@ bool
 jayson_check_match(char* src, const char* match, char len) {
     char i = 0, *ptr = src;
     for(;*ptr == match[i] && match[i] != '\0'; ++ptr, ++i);
-    return (i-len);
+    return !(i-len);
 }
 
 
@@ -51,7 +62,13 @@ char* jayson_match_until_but_better(char* src, const char ch, size_t *len){
     if (!*src) return NULL;
     
     char* ptr = src;
-    for(;*ptr != ch && *ptr != '\0'; ++ptr);
+    for(; *ptr != '\0'; ++ptr) {
+        if (*ptr == '\\' && *(ptr+1) != '\0') {
+            ptr++;
+            continue;
+        }
+        if (*ptr == ch) break;
+    }
 
     char* str = calloc(((*len = ptr - src)+1), sizeof(char));
     if (!str) return NULL;
@@ -83,8 +100,8 @@ char* jayson_match_until(char* src, const char ch, size_t *len) {
 }
 
 bool jayson_check_opts(char* ptr, char* chs) {
-    for (char* ch = chs; *ch != '\0';++ch) if (*ptr == *ch) return false;
-    return true;
+    for (char* ch = chs; *ch != '\0';++ch) if (*ptr == *ch) return true;
+    return false;
 }
 
 /*
